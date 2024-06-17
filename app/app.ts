@@ -13,19 +13,25 @@ import {
     ExtensionType,
     createInitializeMintInstruction,
     mintTo,
-    createAccount,
     getMintLen,
     getTransferFeeAmount,
-    unpackAccount,
     TOKEN_2022_PROGRAM_ID,
     createInitializeTransferFeeConfigInstruction,
-    harvestWithheldTokensToMint,
     transferCheckedWithFee,
-    withdrawWithheldTokensFromAccounts,
-    withdrawWithheldTokensFromMint,
-    getOrCreateAssociatedTokenAccount,
-    createAssociatedTokenAccountIdempotent
+    createAssociatedTokenAccountIdempotent,
+    createInitializeMetadataPointerInstruction,
+    TYPE_SIZE,
+    LENGTH_SIZE,
+    getMint,
+    getMetadataPointerState,
+    getTokenMetadata,
 } from '@solana/spl-token';
+
+import {
+    createInitializeInstruction,
+    pack,
+    TokenMetadata,
+} from "@solana/spl-token-metadata";
 
 const connection = new Connection('http://127.0.0.1:8899', 'confirmed');
 
@@ -34,16 +40,26 @@ const mintAuthority = Keypair.generate();
 const mintKeypair = Keypair.generate();
 const mint = mintKeypair.publicKey;
 
-// Generate keys for transfer fee config authority and withdrawal authority
-const transferFeeConfigAuthority = Keypair.generate();
-const withdrawWithheldAuthority = Keypair.generate();
+// Metadata to store in Mint Account
+const metaData: TokenMetadata = {
+    updateAuthority: mint,
+    mint: mint,
+    name: "frogwifcat",
+    symbol: "WEF",
+    uri: "https://raw.githubusercontent.com/ahmetson/frogwifcat/main/assets/metadata.json",
+    additionalMetadata: []
+  };
 
 // Define the extensions to be used by the mint
 const extensions = [
     ExtensionType.TransferFeeConfig,
+    ExtensionType.MetadataPointer,
 ];
 
 // Calculate the length of the mint
+const metadataExtension = TYPE_SIZE + LENGTH_SIZE;
+const metadataLen = pack(metaData).length;
+
 const mintLen = getMintLen(extensions);
 
 // Set the decimals, fee basis points, and maximum fee
@@ -69,23 +85,39 @@ async function main() {
     await connection.confirmTransaction({signature: airdropSignature, ...(await connection.getLatestBlockhash())});
 
     // Step 2 - Create a new token
-    const mintLamports = await connection.getMinimumBalanceForRentExemption(mintLen);
+    const mintLamports = await connection.getMinimumBalanceForRentExemption(mintLen + metadataExtension + metadataLen);
     const mintTransaction = new Transaction().add(
         SystemProgram.createAccount({
-        fromPubkey: payer.publicKey,
-        newAccountPubkey: mint,
-        space: mintLen,
-        lamports: mintLamports,
-        programId: TOKEN_2022_PROGRAM_ID,
-    }),
-    createInitializeTransferFeeConfigInstruction(mint, 
-        null, //transferFeeConfigAuthority.publicKey,       // No one can change the transfer fee
-        null, //withdrawWithheldAuthority.publicKey,        // No one can withdraw the transfer fee
-        feeBasisPoints,
-        maxFee,
-        TOKEN_2022_PROGRAM_ID
-    ),
-    createInitializeMintInstruction(mint, decimals, mintAuthority.publicKey, null, TOKEN_2022_PROGRAM_ID)
+            fromPubkey: payer.publicKey,
+            newAccountPubkey: mint,
+            space: mintLen,
+            lamports: mintLamports,
+            programId: TOKEN_2022_PROGRAM_ID,
+        }),
+        createInitializeTransferFeeConfigInstruction(mint, 
+            null, //transferFeeConfigAuthority.publicKey,       // No one can change the transfer fee
+            null, //withdrawWithheldAuthority.publicKey,        // No one can withdraw the transfer fee
+            feeBasisPoints,
+            maxFee,
+            TOKEN_2022_PROGRAM_ID
+        ),
+        createInitializeMetadataPointerInstruction(
+            mint,
+            payer.publicKey,
+            mint,
+            TOKEN_2022_PROGRAM_ID
+        ),
+        createInitializeMintInstruction(mint, decimals, payer.publicKey, null, TOKEN_2022_PROGRAM_ID),
+        createInitializeInstruction({
+            programId: TOKEN_2022_PROGRAM_ID,
+            mint: mint,
+            metadata: mint,
+            name: metaData.name,
+            symbol: metaData.symbol,
+            uri: metaData.uri,
+            mintAuthority: payer.publicKey,
+            updateAuthority: payer.publicKey,
+        }),
     );
 
     const newTokenTx = await sendAndConfirmTransaction(connection, mintTransaction, [payer, mintKeypair], undefined);
@@ -94,7 +126,7 @@ async function main() {
     // Step 3 - Mint tokens to Owner
     const owner = Keypair.generate();
     const sourceAccount = await createAssociatedTokenAccountIdempotent(connection, payer, mint, owner.publicKey, {}, TOKEN_2022_PROGRAM_ID);
-    const mintSig = await mintTo(connection, payer, mint, sourceAccount, mintAuthority, mintAmount, [], undefined, TOKEN_2022_PROGRAM_ID);
+    const mintSig = await mintTo(connection, payer, mint, sourceAccount, payer, mintAmount, [], undefined, TOKEN_2022_PROGRAM_ID);
 
     console.log("Tokens minted: ", generateExplorerUrl(mintSig));
 
@@ -115,45 +147,26 @@ async function main() {
     );
     console.log("Tokens transfered: ", generateExplorerUrl(transferSig));
 
-    /*
-    // Step 5 - Fetch Fee accounts
-    const allAccounts = await connection.getProgramAccounts(TOKEN_2022_PROGRAM_ID, {
-        commitment: 'confirmed',
-        filters: [
-            {
-                memcmp: {
-                    offset: 0,
-                    bytes: mint.toString(),
-                }
-            }
-        ]
-    })
-    const accountsToWithdrawFrom: PublicKey[] = [];
-    for (const accountInfo of allAccounts) {
-        const account = unpackAccount(accountInfo.pubkey, accountInfo.account, TOKEN_2022_PROGRAM_ID);
-        const transferFeeAmount = getTransferFeeAmount(account);
-        if (transferFeeAmount !== null && transferFeeAmount.withheldAmount > BigInt(0)) {
-            accountsToWithdrawFrom.push(accountInfo.pubkey);
-        }
-    }*/
-
-    /*
-    // Step 6 - Harvest Fees
-    const feeVault = Keypair.generate();
-    const feeVaultAccount = await createAssociatedTokenAccountIdempotent(connection, payer, mint, feeVault.publicKey, {}, TOKEN_2022_PROGRAM_ID);
-
-    const withdrawSig1 = await withdrawWithheldTokensFromAccounts(
+    // Step 5 - Read metadata
+    // Retrieve mint information
+    const mintInfo = await getMint(
         connection,
-        payer,
         mint,
-        feeVaultAccount,
-        withdrawWithheldAuthority,
-        [],
-        accountsToWithdrawFrom
+        "confirmed",
+        TOKEN_2022_PROGRAM_ID,
     );
+    const metadataPointer = getMetadataPointerState(mintInfo);
+    console.log("\nMetadata Pointer:", JSON.stringify(metadataPointer, null, 2));
 
-    console.log("Withdraw from accounts:", generateExplorerUrl(withdrawSig1));*/
+    // Retrieve and log the metadata state
+    const metadata = await getTokenMetadata(
+        connection,
+        mint, // Mint Account address
+    );
+    console.log("\nMetadata:", JSON.stringify(metadata, null, 2));
 }
+
+console.log(`Starting the app.ts...`);
 
 // Execute the main function
 main();
