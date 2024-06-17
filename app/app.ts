@@ -49,7 +49,7 @@ const mintLen = getMintLen(extensions);
 // Set the decimals, fee basis points, and maximum fee
 const decimals = 9;
 const feeBasisPoints = 100; // 1%
-const maxFee = BigInt(9 * Math.pow(10, decimals)); // 9 tokens
+const maxFee = BigInt(1_000_000 * Math.pow(10, decimals)); // 1,000,000 tokens
 
 // Define the amount to be minted and the amount to be transferred, accounting for decimals
 const mintAmount = BigInt(1_000_000 * Math.pow(10, decimals)); // Mint 1,000,000 tokens
@@ -57,7 +57,7 @@ const transferAmount = BigInt(1_000 * Math.pow(10, decimals)); // Transfer 1,000
 
 // calculate the fee for the transfer
 const calcFee = (transferAmount * BigInt(feeBasisPoints)) / BigInt(10_000); // expect 10 fee
-const fee = calcFee > maxFee ? maxFee : calcFee; // expect 9 fee
+const fee = calcFee > maxFee ? maxFee : calcFee; // expect 10 fee
 
 function generateExplorerUrl(txId: string) {
     return `https://explorer.solana.com/tx/${txId}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899`;
@@ -79,8 +79,8 @@ async function main() {
         programId: TOKEN_2022_PROGRAM_ID,
     }),
     createInitializeTransferFeeConfigInstruction(mint, 
-        transferFeeConfigAuthority.publicKey,
-        withdrawWithheldAuthority.publicKey,
+        null, //transferFeeConfigAuthority.publicKey,       // No one can change the transfer fee
+        null, //withdrawWithheldAuthority.publicKey,        // No one can withdraw the transfer fee
         feeBasisPoints,
         maxFee,
         TOKEN_2022_PROGRAM_ID
@@ -115,6 +115,7 @@ async function main() {
     );
     console.log("Tokens transfered: ", generateExplorerUrl(transferSig));
 
+    /*
     // Step 5 - Fetch Fee accounts
     const allAccounts = await connection.getProgramAccounts(TOKEN_2022_PROGRAM_ID, {
         commitment: 'confirmed',
@@ -134,8 +135,9 @@ async function main() {
         if (transferFeeAmount !== null && transferFeeAmount.withheldAmount > BigInt(0)) {
             accountsToWithdrawFrom.push(accountInfo.pubkey);
         }
-    }
+    }*/
 
+    /*
     // Step 6 - Harvest Fees
     const feeVault = Keypair.generate();
     const feeVaultAccount = await createAssociatedTokenAccountIdempotent(connection, payer, mint, feeVault.publicKey, {}, TOKEN_2022_PROGRAM_ID);
@@ -150,7 +152,7 @@ async function main() {
         accountsToWithdrawFrom
     );
 
-    console.log("Withdraw from accounts:", generateExplorerUrl(withdrawSig1));
+    console.log("Withdraw from accounts:", generateExplorerUrl(withdrawSig1));*/
 }
 
 // Execute the main function
