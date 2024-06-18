@@ -5,8 +5,6 @@ import {
     SystemProgram,
     Transaction,
     LAMPORTS_PER_SOL,
-    Cluster,
-    PublicKey,
 } from "@solana/web3.js";
 
 import {
@@ -14,7 +12,6 @@ import {
     createInitializeMintInstruction,
     mintTo,
     getMintLen,
-    getTransferFeeAmount,
     TOKEN_2022_PROGRAM_ID,
     createInitializeTransferFeeConfigInstruction,
     transferCheckedWithFee,
@@ -34,9 +31,9 @@ import {
 } from "@solana/spl-token-metadata";
 
 const connection = new Connection('http://127.0.0.1:8899', 'confirmed');
+// const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
 
 const payer = Keypair.generate();
-const mintAuthority = Keypair.generate();
 const mintKeypair = Keypair.generate();
 const mint = mintKeypair.publicKey;
 
