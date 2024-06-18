@@ -293,6 +293,13 @@
   dependencies:
     tiny-invariant "^1.3.1"
 
+"@layerzerolabs/lz-definitions@^2.3.23":
+  version "2.3.23"
+  resolved "https://registry.yarnpkg.com/@layerzerolabs/lz-definitions/-/lz-definitions-2.3.23.tgz#5d8c16350adafa14e0da114aa3351a448a56c4b2"
+  integrity sha512-4Bp+1YwzLZL8NftC879yTRdRhwFjRG2Zh23xZhoRaBA6BfrLTiC2EPv2A6ZnsYad8ppouVMuGeiDnk4iQXT4Fw==
+  dependencies:
+    tiny-invariant "^1.3.1"
+
 "@layerzerolabs/lz-solana-sdk-v2@^2.3.22":
   version "2.3.22"
   resolved "https://registry.yarnpkg.com/@layerzerolabs/lz-solana-sdk-v2/-/lz-solana-sdk-v2-2.3.22.tgz#deae60464bf95b180f54c95568c39213373bf0ba"
@@ -331,6 +338,20 @@
     "@ethersproject/keccak256" "^5.7.0"
     "@ethersproject/solidity" "^5.7.0"
     "@solana/web3.js" "^1.92.1"
+    tiny-invariant "^1.3.1"
+
+"@layerzerolabs/lz-v2-utilities@^2.3.23":
+  version "2.3.23"
+  resolved "https://registry.yarnpkg.com/@layerzerolabs/lz-v2-utilities/-/lz-v2-utilities-2.3.23.tgz#0116f98386a0177c4d20f44381fe1ea93dd3723f"
+  integrity sha512-QkCw8q9RsT1V32Q+JMyfAlcmR0tZ6TK3hstyBSB3ZjtlIs38ranApfNMJFiop6U9W8nA3lclOLCxCHOlzAttJA==
+  dependencies:
+    "@ethersproject/abi" "^5.7.0"
+    "@ethersproject/address" "^5.7.0"
+    "@ethersproject/bignumber" "^5.7.0"
+    "@ethersproject/bytes" "^5.7.0"
+    "@ethersproject/keccak256" "^5.7.0"
+    "@ethersproject/solidity" "^5.7.0"
+    bs58 "^5.0.0"
     tiny-invariant "^1.3.1"
 
 "@metaplex-foundation/beet-solana@^0.3.1":

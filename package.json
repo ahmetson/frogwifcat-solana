@@ -5,7 +5,9 @@
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.30.0",
+    "@layerzerolabs/lz-definitions": "^2.3.23",
     "@layerzerolabs/lz-solana-sdk-v2": "^2.3.22",
+    "@layerzerolabs/lz-v2-utilities": "^2.3.23",
     "@solana/spl-token": "^0.4.6",
     "@solana/spl-token-metadata": "^0.1.4",
     "@solana/web3.js": "^1.93.0",
