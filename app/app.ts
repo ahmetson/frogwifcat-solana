@@ -5,7 +5,11 @@ import {
     SystemProgram,
     Transaction,
     LAMPORTS_PER_SOL,
+    clusterApiUrl,
 } from "@solana/web3.js";
+
+import fs from 'fs';
+import 'dotenv/config';
 
 import {
     ExtensionType,
@@ -30,12 +34,19 @@ import {
     TokenMetadata,
 } from "@solana/spl-token-metadata";
 
-const connection = new Connection('http://127.0.0.1:8899', 'confirmed');
-// const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
 
-const payer = Keypair.generate();
+// const connection = new Connection('http://127.0.0.1:8899', 'confirmed');
+const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
+
+const PAYER_KEY_BYTES = fs.readFileSync(process.env.PAYER_PATH!);
+const payer = Keypair.fromSecretKey(new Uint8Array(JSON.parse(PAYER_KEY_BYTES.toString())));
 const mintKeypair = Keypair.generate();
 const mint = mintKeypair.publicKey;
+
+const mintPath = `${process.env.KEYS_PATH}${mint.toBase58()}.json`;
+
+fs.writeFileSync(mintPath, '['+mintKeypair.secretKey.toString()+']');
+console.log(`Check out the ${mintPath}, for the saved mint account`);
 
 // Metadata to store in Mint Account
 const metaData: TokenMetadata = {
@@ -78,8 +89,11 @@ function generateExplorerUrl(txId: string) {
 
 async function main() {
     // Step 1 - Airdrop to Payer
-    const airdropSignature = await connection.requestAirdrop(payer.publicKey, 2 * LAMPORTS_PER_SOL);
-    await connection.confirmTransaction({signature: airdropSignature, ...(await connection.getLatestBlockhash())});
+    if (connection.rpcEndpoint == 'http://127.0.0.1:8899') {
+        console.log(`Airdrop some solana in the locahost!`);
+        const airdropSignature = await connection.requestAirdrop(payer.publicKey, 2 * LAMPORTS_PER_SOL);
+        await connection.confirmTransaction({signature: airdropSignature, ...(await connection.getLatestBlockhash())});
+    }
 
     // Step 2 - Create a new token
     const mintLamports = await connection.getMinimumBalanceForRentExemption(mintLen + metadataExtension + metadataLen);
@@ -121,8 +135,7 @@ async function main() {
     console.log("New token created: ", generateExplorerUrl(newTokenTx));
 
     // Step 3 - Mint tokens to Owner
-    const owner = Keypair.generate();
-    const sourceAccount = await createAssociatedTokenAccountIdempotent(connection, payer, mint, owner.publicKey, {}, TOKEN_2022_PROGRAM_ID);
+    const sourceAccount = await createAssociatedTokenAccountIdempotent(connection, payer, mint, payer.publicKey, {}, TOKEN_2022_PROGRAM_ID);
     const mintSig = await mintTo(connection, payer, mint, sourceAccount, payer, mintAmount, [], undefined, TOKEN_2022_PROGRAM_ID);
 
     console.log("Tokens minted: ", generateExplorerUrl(mintSig));
@@ -136,7 +149,7 @@ async function main() {
         sourceAccount,
         mint,
         destinationAccount,
-        owner,
+        payer,
         transferAmount,
         decimals,
         fee,

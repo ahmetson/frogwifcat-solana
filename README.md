@@ -26,6 +26,12 @@ Print your address:
 
 `solana address`
 
+To import your wallet into the browser or descktop wallets simply print it:
+
+`npx ts-node app/secret_key.ts`
+
+> First, edit the correct path to the keypair location.
+
 ---
 
 Airdrop some SOLs
@@ -33,3 +39,10 @@ Airdrop some SOLs
 `solana airdrop 2`
 
 > It works for devnet and localhost only.
+
+## Deploy the contracts
+
+`npx ts-node app/app.ts`
+
+This script will write the secret key of the token owner. Mark that for yourself.
+For example give it a custom name.
