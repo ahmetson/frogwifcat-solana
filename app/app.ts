@@ -6,6 +6,7 @@ import {
     Transaction,
     LAMPORTS_PER_SOL,
     clusterApiUrl,
+    PublicKey,
 } from "@solana/web3.js";
 
 import fs from 'fs';
@@ -26,6 +27,8 @@ import {
     getMint,
     getMetadataPointerState,
     getTokenMetadata,
+    createSetAuthorityInstruction,
+    AuthorityType,
 } from '@solana/spl-token';
 
 import {
@@ -34,9 +37,12 @@ import {
     TokenMetadata,
 } from "@solana/spl-token-metadata";
 
+import { OftTools, OftProgram as oft, OFT_SEED } from "@layerzerolabs/lz-solana-sdk-v2";
+// import oftJson from "@layerzerolabs/lz-solana-sdk-v2/deployments/solana-testnet/oft.json";
+//console.log(oftJson.address); // print it as PublicKey
 
 // const connection = new Connection('http://127.0.0.1:8899', 'confirmed');
-const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
+const connection = new Connection(clusterApiUrl("testnet"), "confirmed");
 
 const PAYER_KEY_BYTES = fs.readFileSync(process.env.PAYER_PATH!);
 const payer = Keypair.fromSecretKey(new Uint8Array(JSON.parse(PAYER_KEY_BYTES.toString())));
@@ -71,17 +77,11 @@ const metadataLen = pack(metaData).length;
 const mintLen = getMintLen(extensions);
 
 // Set the decimals, fee basis points, and maximum fee
-const decimals = 9;
+// Layerzero recommends 6 decimals
+const decimals = 6;     
 const feeBasisPoints = 100; // 1%
 const maxFee = BigInt(1_000_000 * Math.pow(10, decimals)); // 1,000,000 tokens
 
-// Define the amount to be minted and the amount to be transferred, accounting for decimals
-const mintAmount = BigInt(1_000_000 * Math.pow(10, decimals)); // Mint 1,000,000 tokens
-const transferAmount = BigInt(1_000 * Math.pow(10, decimals)); // Transfer 1,000 tokens
-
-// calculate the fee for the transfer
-const calcFee = (transferAmount * BigInt(feeBasisPoints)) / BigInt(10_000); // expect 10 fee
-const fee = calcFee > maxFee ? maxFee : calcFee; // expect 10 fee
 
 function generateExplorerUrl(txId: string) {
     return `https://explorer.solana.com/tx/${txId}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899`;
@@ -134,28 +134,53 @@ async function main() {
     const newTokenTx = await sendAndConfirmTransaction(connection, mintTransaction, [payer, mintKeypair], undefined);
     console.log("New token created: ", generateExplorerUrl(newTokenTx));
 
-    // Step 3 - Mint tokens to Owner
-    const sourceAccount = await createAssociatedTokenAccountIdempotent(connection, payer, mint, payer.publicKey, {}, TOKEN_2022_PROGRAM_ID);
-    const mintSig = await mintTo(connection, payer, mint, sourceAccount, payer, mintAmount, [], undefined, TOKEN_2022_PROGRAM_ID);
-
-    console.log("Tokens minted: ", generateExplorerUrl(mintSig));
-
-    // Step 5 - Send Tokens from Owner to a new Account
-    const destinationOwner = Keypair.generate();
-    const destinationAccount = await createAssociatedTokenAccountIdempotent(connection, payer, mint, destinationOwner.publicKey, {}, TOKEN_2022_PROGRAM_ID);
-    const transferSig = await transferCheckedWithFee(
-        connection, 
-        payer,
-        sourceAccount,
-        mint,
-        destinationAccount,
-        payer,
-        transferAmount,
-        decimals,
-        fee,
-        [] 
+    // Step 3: Transfer Mint Authority and initialize OFT config
+    const [oftConfig] = PublicKey.findProgramAddressSync(
+        [Buffer.from(OFT_SEED), mintKeypair.publicKey.toBuffer()],
+        oft.OFT_DEFAULT_PROGRAM_ID, // Default program id is on devnet
     );
-    console.log("Tokens transfered: ", generateExplorerUrl(transferSig));
+
+    console.log(`OFT Config`, oftConfig);
+
+    console.log(`Transfer authority to the OFT...`);
+
+    const oftTx = new Transaction().add(
+        createSetAuthorityInstruction(
+            mintKeypair.publicKey, // Minter's public key
+            payer.publicKey, // current mint authority
+            AuthorityType.MintTokens,
+            oftConfig,
+            [], // Multisig owners (none in this case)
+            TOKEN_2022_PROGRAM_ID,
+        ),
+        await OftTools.createInitNativeOftIx(
+            payer.publicKey, // payer
+            payer.publicKey, // admin
+            mintKeypair.publicKey, // mint account
+            payer.publicKey, // OFT Mint authority
+            decimals,
+            TOKEN_2022_PROGRAM_ID,
+        )
+    )
+
+    console.log(`Send transaction...`);
+
+    // send transaction to initialize the OFT
+    const oftSig = await sendAndConfirmTransaction(connection, oftTx, [payer]);
+    const link = generateExplorerUrl(oftSig);
+    console.log(`✅ OFT Initialization Complete! View the transaction here: ${link}`);
+
+    // Step 4 Remove mint authority
+    const noMintTx = new Transaction().add(
+        await OftTools.createSetMintAuthorityIx(
+            payer.publicKey,
+            oftConfig,
+            null, // the oft program enforces that once the OFT mint authority is set to null, it can not be reset
+        )
+    )
+    const noMintSig = await sendAndConfirmTransaction(connection, noMintTx, [payer]);
+    const noMintLink = generateExplorerUrl(noMintSig);
+    console.log(`✅ OFT Mint authority removed! View the transaction here: ${noMintLink}`);
 
     // Step 5 - Read metadata
     // Retrieve mint information
