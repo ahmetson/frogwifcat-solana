@@ -26,7 +26,7 @@ Print your address:
 
 `solana address`
 
-To import your wallet into the browser or descktop wallets simply print it:
+To import your wallet into the browser or desktop wallets simply print it:
 
 `npx ts-node app/secret_key.ts`
 
@@ -48,6 +48,49 @@ This script will write the secret key of the token owner. Mark that for yourself
 For example give it a custom name.
 
 The below are the some important parts of the logs.
+
+### Mainnet version
+
+* [Token Created Tx](https://explorer.solana.com/tx/22h7EbCVoKuqFHHi1vTzMQGK9ZzDq6TBd3HezbiM5F5H7Y5qrfqvbwBZj1C9Df32x3PmTyXBxqAezoojruGLv3LQ)
+* ✅ OFT Initialization Complete! [View the transaction)[https://explorer.solana.com/tx/5GGRZ5gCwpfzVDo2QHUF6aU2utfsVT8hfnUp5b9yGk76FdRyWxDMzk1U6upgygtdzwcCrrwLwvhH6o6rb4mXBQ5z)
+* OFT Mint authority removed! [View the transaction](https://explorer.solana.com/tx/StsqgW5Pini3zWQS8d8Z56u1H582cqQ4xsdQcYq1UCqfuuPEiFh6zZhyTepRjJfrCWG1rzKus7c82qA138RMtFo)
+
+
+Token parameters:
+
+```
+Oft Public Key:
+base: 7QWG37omsF5t8LSEZ6vZPDntwcA4jxgCkf9hyjkmYo3d 
+hex: 5f2b904f10210b8e3a35e38775b09d0fbcfe7985c23b75c17a789effd93fd308
+
+```
+
+```
+Metadata Pointer: {
+  "authority": "HybZFzdU6MvCCk3sHML4rM2mLkGDHwJzoPqMFZzZ1CTF",
+  "metadataAddress": "8DzFbuCiD7UTJnVUcCykXefWSuFm2Gsp26MAXK4tL873"
+}
+```
+
+```
+Metadata: {
+  "updateAuthority": "HybZFzdU6MvCCk3sHML4rM2mLkGDHwJzoPqMFZzZ1CTF",
+  "mint": "8DzFbuCiD7UTJnVUcCykXefWSuFm2Gsp26MAXK4tL873",
+  "name": "frogwifcat",
+  "symbol": "WEF",
+  "uri": "https://raw.githubusercontent.com/ahmetson/frogwifcat/main/assets/metadata.json",
+  "additionalMetadata": []
+}
+```
+
+#### Peers
+
+✅  You set 0x0000000000000000000000000564c3e8fe23c5a6220a300c303f41e43d9be9e2 for dstEid 30101! View the transaction here: https://explorer.solana.com/tx/5BvYsRir5TnaifSgxaBwJYSo2x6TxiKLRWhVcg8kyDhMSGB973QcAnDezxHxn3RMGfYwa8wZwsAMxgMf7Jd2Pnx1?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899
+✅ You set 0x000000000000000000000000889400fb9bde04bfdf353cc718fed3d6ddcf735f for dstEid 30183! View the transaction here: https://explorer.solana.com/tx/4AsvKatMUbrggbCWk8gZcMBry7mBmTa1bXsfJaiqcBTvMHNeDUHkvuqG5pCGzzcJfrWByeBMiD5e3ypEuam8x9mc?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899
+✅ You set 0x000000000000000000000000e40c7856b6d0e1b01decbf9976bb706b9cd1229f for dstEid 30184! View the transaction here: https://explorer.solana.com/tx/UnLnNyqvJNAN3koeim8hJd92oRQYPzMeBXq3aorXuMwApqJwBWQy4SvQgB4WHAW2xytBCYTZaD33FgEnpeKyuih?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899
+
+
+### Testnet
 
 ---
 
@@ -94,7 +137,7 @@ Starting the set_peer.ts...
 ```
 
 ### For setting peers on EVM based blockchains
-Get the Endpoint ID of Solana. For example it's 40168 for Solana testnet.
+Get the Endpoint ID of Solana. For example it's 40168 for Solana Testnet and 30168 for Solana mainnet beta.
 Use the OFT Config's public key as the peer. And then set `setPeer` in all smartcontracts on EVM based blockchains.
 
 > OFT Config is retreived from the set_peer.ts and app.ts scripts.
@@ -102,5 +145,5 @@ Use the OFT Config's public key as the peer. And then set `setPeer` in all smart
 ### For Sending message on the bridge from EVM to Solana
 
 > https://docs.layerzero.network/v2/developers/solana/oft/native#setting-enforced-options-inbound-to-solana
-> 0.0015 SOL must be set as inbound price when sending from EVM to Solana.
+> Minimum 0.0015 SOL must be set as inbound price when sending from EVM to Solana.
 > Use the link above when configuring the bridge.

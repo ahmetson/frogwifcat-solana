@@ -7,6 +7,7 @@ import {
     LAMPORTS_PER_SOL,
     clusterApiUrl,
     PublicKey,
+    Cluster,
 } from "@solana/web3.js";
 
 import fs from 'fs';
@@ -41,8 +42,10 @@ import { OftTools, OftProgram as oft, OFT_SEED } from "@layerzerolabs/lz-solana-
 // import oftJson from "@layerzerolabs/lz-solana-sdk-v2/deployments/solana-testnet/oft.json";
 //console.log(oftJson.address); // print it as PublicKey
 
+// LayerZero testnet is on Solana Testnet, not in devnet
+const cluster: string = "mainnet-beta"; // testnet | localhost
 // const connection = new Connection('http://127.0.0.1:8899', 'confirmed');
-const connection = new Connection(clusterApiUrl("testnet"), "confirmed");
+const connection = new Connection(clusterApiUrl(cluster as Cluster), "confirmed");
 
 const PAYER_KEY_BYTES = fs.readFileSync(process.env.PAYER_PATH!);
 const payer = Keypair.fromSecretKey(new Uint8Array(JSON.parse(PAYER_KEY_BYTES.toString())));
@@ -84,12 +87,19 @@ const maxFee = BigInt(1_000_000 * Math.pow(10, decimals)); // 1,000,000 tokens
 
 
 function generateExplorerUrl(txId: string) {
-    return `https://explorer.solana.com/tx/${txId}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899`;
+    let base = `https://explorer.solana.com/tx/${txId}`;
+    if (cluster === "mainnet-beta") {
+        return base;
+    }
+    if (cluster === "localhost") {
+        return base + "?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899"
+    }
+    return base + "?cluster=" + cluster;
 }
 
 async function main() {
     // Step 1 - Airdrop to Payer
-    if (connection.rpcEndpoint == 'http://127.0.0.1:8899') {
+    if (cluster === 'localhost') {
         console.log(`Airdrop some solana in the locahost!`);
         const airdropSignature = await connection.requestAirdrop(payer.publicKey, 2 * LAMPORTS_PER_SOL);
         await connection.confirmTransaction({signature: airdropSignature, ...(await connection.getLatestBlockhash())});
